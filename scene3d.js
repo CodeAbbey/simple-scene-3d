@@ -73,7 +73,7 @@ Scene3d.prototype.filterVisible = function() {
     var res = [];
     for (var i in this.field) {
         var obj = this.field[i];
-        var dist = Math.hypot(obj.y - this.y, obj.x - this.x);
+        var dist = Math.sqrt(Math.pow(obj.y - this.y, 2) + Math.pow(obj.x - this.x, 2));
         if (dist > this.scrDist && dist < this.vis && Math.abs(this.angleTo(obj.x, obj.y)) < da) {
             res.push(obj);
         }
