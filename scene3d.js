@@ -1,7 +1,7 @@
 function Scene3d(canvasId) {
     this.canvasId = canvasId;
     this.init();
-    this.redraw();
+    var self = this;
 }
 
 Scene3d.prototype.init = function() {
@@ -9,12 +9,14 @@ Scene3d.prototype.init = function() {
     this.ctx = canvas.getContext('2d');
     this.w = canvas.width;
     this.h = canvas.height;
+    this.count = 5;
     this.sz = 100;
     this.ht = 1;
     this.vis = 80;
     this.scrDist = 0.3;
     this.scrHalf = 0.1;
-    this.initField(100);
+    this.initField(100, 5);
+    this.initImages();
 
     var self = this;
     canvas.onmousedown = function() { self.mouseDown(); };
@@ -22,21 +24,37 @@ Scene3d.prototype.init = function() {
     setInterval(function() {self.onTimer()}, 70);
 }
 
-Scene3d.prototype.initField = function(n) {
+Scene3d.prototype.initImages = function() {
+    var files = ['fir1.png', 'fir2.png', 'gift.png', 'stake.png'];
+    this.images = [];
+    for (var i in files) {
+        var img = new Image();
+        img.src = window.sceneScriptPath + files[i];
+        this.images.push(img);
+    }
+}
+
+Scene3d.prototype.initField = function(n, k) {
     this.x = this.sz / 2;
     this.y = this.sz / 2;
     this.dir = 0;
     this.field = [];
     for (var i = 0; i < this.sz; i++) {
-        this.field.push({type: 2, x: i, y: 0, h: 1.5});
-        this.field.push({type: 2, x: i + 1, y: this.sz, h: 1.5});
-        this.field.push({type: 2, x: 0, y: i + 1, h: 1.5});
-        this.field.push({type: 2, x: this.sz, y: i, h: 1.5});
+        this.field.push({type: 3, x: i, y: 0, h: 1.5});
+        this.field.push({type: 3, x: i + 1, y: this.sz, h: 1.5});
+        this.field.push({type: 3, x: 0, y: i + 1, h: 1.5});
+        this.field.push({type: 3, x: this.sz, y: i, h: 1.5});
     }
     for (var j = 0; j < n; j++) {
         var x = Math.random() * this.sz;
         var y = Math.random() * this.sz;
-        this.field.push({type: 1, x: x, y: y, h: 2.5});
+        this.field.push({type: Math.floor(Math.random() * 2), x: x, y: y, h: 2.5});
+    }
+    var fieldSz = this.field.length;
+    for (var j = 0; j < k; j++) {
+        var x = Math.random() * this.sz;
+        var y = Math.random() * this.sz;
+        this.field.push({type: 2, x: x, y: y, h: 0.5, index: fieldSz + j});
     }
 }
 
@@ -44,8 +62,19 @@ Scene3d.prototype.redraw = function() {
     this.ctx.fillStyle = '#ffffff';
     this.ctx.fillRect(0, 0, this.w, this.h);
     var objects = this.rotate(this.filterVisible());
+    this.sortObjects(objects);
     for (var i in objects) {
         var obj = objects[i];
+        if (obj.type < 0) {
+            continue;
+        }
+        if (obj.type == 2) {
+            if (Math.sqrt(obj.x*obj.x + obj.y*obj.y) < 1.5) {
+                this.field[obj.index].type = -1;
+                this.count--;
+                continue;
+            }
+        }
         var da = -Math.atan2(obj.y, obj.x);
         var sx = Math.tan(da) * this.scrDist;
         var k = this.scrDist / obj.x;
@@ -53,6 +82,17 @@ Scene3d.prototype.redraw = function() {
         var sy = -this.ht * k;
         this.drawObject(obj, sx, sy, sh);
     }
+    this.ctx.fillStyle = '#0000cc';
+    this.ctx.font = '20px Arial';
+    this.ctx.fillText('Gifts to find: ' + this.count, 2, 23);
+}
+
+Scene3d.prototype.sortObjects = function(objs) {
+    for (var i in objs) {
+        var obj = objs[i];
+        obj.dist = Math.sqrt(Math.pow(obj.x, 2) + Math.pow(obj.y, 2));
+    }
+    objs.sort(function(a, b) { return b.dist - a.dist; });
 }
 
 Scene3d.prototype.drawObject = function(obj, sx, sy, sh) {
@@ -60,12 +100,10 @@ Scene3d.prototype.drawObject = function(obj, sx, sy, sh) {
     var x = Math.round((sx + this.scrHalf) * this.w / (this.scrHalf * 2));
     var y1 = Math.round((-sy + scrHalfH) * this.h / (scrHalfH * 2));
     var y2 = Math.round((-(sh + sy) + scrHalfH) * this.h / (scrHalfH * 2));
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeStyle = obj.type == 1 ? '#66ff66' : '#8800ff';
-    this.ctx.beginPath();
-    this.ctx.moveTo(x, y1);
-    this.ctx.lineTo(x, y2);
-    this.ctx.stroke();
+    var img = this.images[obj.type];
+    var h = y1 - y2;
+    var w = Math.round(img.width * h / img.height);
+    this.ctx.drawImage(img, Math.round(x - w / 2), y2, w, h);
 }
 
 Scene3d.prototype.filterVisible = function() {
@@ -89,7 +127,11 @@ Scene3d.prototype.rotate = function(objs) {
         var y = obj.y - this.y;
         var nx = Math.cos(this.dir) * x + Math.sin(this.dir) * y;
         var ny = Math.cos(this.dir) * y - Math.sin(this.dir) * x;
-        res.push({type: obj.type, h: obj.h, x: nx, y: ny});
+        var copy = {type: obj.type, h: obj.h, x: nx, y: ny};
+        if (copy.type == 2) {
+            copy.index = obj.index;
+        }
+        res.push(copy);
     }
     return res;
 }
@@ -107,17 +149,14 @@ Scene3d.prototype.angleTo = function(x, y) {
 }
 
 Scene3d.prototype.onTimer = function() {
-    if (!this.move) {
-        return;
-    }
     if (this.move == 'F') {
         var step = 0.3;
         this.x += step * Math.cos(this.dir);
         this.y += step * Math.sin(this.dir);
     } else if (this.move == 'L') {
-        this.dir += 0.01;
-    } else {
-        this.dir -= 0.01;
+        this.dir += 0.02;
+    } else if (this.move == 'R') {
+        this.dir -= 0.02;
     }
     this.redraw();
 }
@@ -136,3 +175,10 @@ Scene3d.prototype.mouseDown = function() {
 Scene3d.prototype.mouseUp = function() {
     this.move = null;
 }
+
+window.sceneScriptPath = (function() {
+    var scripts = document.getElementsByTagName('script');
+    var src = scripts.item(scripts.length - 1).getAttribute('src');
+    return src.replace(/[^\/]+$/, '');
+})();
+
