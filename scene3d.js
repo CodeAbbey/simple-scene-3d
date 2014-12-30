@@ -59,8 +59,10 @@ Scene3d.prototype.initField = function(n, k) {
 }
 
 Scene3d.prototype.redraw = function() {
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(0, 0, this.w, this.h);
+    this.ctx.fillStyle = '#aaccff';
+    this.ctx.fillRect(0, 0, this.w, this.h / 2);
+    this.ctx.fillStyle = '#eeeedd';
+    this.ctx.fillRect(0, this.h / 2, this.w, this.h / 2);
     var objects = this.rotate(this.filterVisible());
     this.sortObjects(objects);
     for (var i in objects) {
