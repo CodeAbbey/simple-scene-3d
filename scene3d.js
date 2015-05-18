@@ -180,7 +180,14 @@ Scene3d.prototype.mouseUp = function() {
 
 window.sceneScriptPath = (function() {
     var scripts = document.getElementsByTagName('script');
-    var src = scripts.item(scripts.length - 1).getAttribute('src');
+    var src = './';
+    for (var i = 0; i < scripts.length; i++) {
+        var url = scripts.item(i).getAttribute('src');
+        if (url !== null && url.substring(url.length - 10) == 'scene3d.js') {
+            src = url;
+            break;
+        }
+    }
     return src.replace(/[^\/]+$/, '');
 })();
 
